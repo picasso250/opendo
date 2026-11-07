@@ -1,5 +1,5 @@
 {
-  "name": "xiaochi-xiaolai-ds-group",
+  "name": "opendo",
   "version": "2.0.0",
   "private": true,
   "type": "module",
@@ -7,7 +7,7 @@
     "dev": "npm run personas:build && wrangler dev --local --port 8787",
     "test": "npm run personas:build && node --test test/*.test.js",
     "types": "wrangler types",
-    "typecheck": "npm run personas:build && tsc --noEmit",
+    "typecheck": "npm run personas:build && npm run types && tsc --noEmit",
     "check": "npm run typecheck && npm test && wrangler deploy --dry-run",
     "deploy": "npm run check && wrangler deploy",
     "generate:invites": "node scripts/create-group-invites.mjs",

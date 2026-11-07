@@ -13,3 +13,6 @@ npm-debug.log*
 .runner-state/
 .worker-token.local.json
 runner.local.json
+
+# Private local verification helper from the pre-open-source workspace.
+/verify-results.cjs

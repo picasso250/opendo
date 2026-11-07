@@ -40,7 +40,7 @@ npm run generate:invites
 
 ```bash
 npm run dev       # http://localhost:8787
-npm run check     # TypeScript + tests + Cloudflare dry-run
+npm run check     # Wrangler types + TypeScript + tests + Cloudflare dry-run
 ```
 
 访问本地地址并使用专属邀请链接登录。代码中仍有与双人私人群聊有关的命名、固定房间和部署参数；如果要自托管，请先理解并调整这些配置。生产部署前，在 Cloudflare 设置 `wrangler.jsonc` 所声明的全部必需 Secrets；`npm run deploy` 将发布到你自己配置的域名。
@@ -67,6 +67,11 @@ Runner 公布本机模型配置目录，Router 只能选择实际公布的 `exec
 
 More protocol details: [docs/tasks.md](docs/tasks.md).
 
+### Planned harness integrations
+
+- [DeepSeek Harness / DSH Runner](https://github.com/picasso250/opendo/issues/1) — separate Worker; possible design and latency advantages must be measured rather than assumed.
+- [WorkBuddy Runner for Xiaolai](https://github.com/picasso250/opendo/issues/2) — another independent harness and a test of the protocol's interoperability.
+
 ## Security and limits
 
 - Never commit `.dev.vars`, personal invites, Worker bearer tokens, model API keys, local logs or `runner.local.json`.
@@ -76,6 +81,10 @@ More protocol details: [docs/tasks.md](docs/tasks.md).
 - The Worker must treat Router instructions as untrusted input and enforce its **own** permissions, timeout, and workspace boundaries.
 
 The project is experimental software. Review the source, security model and Cloudflare costs before deploying.
+
+### Note on the reference deployment
+
+The public repository is **OpenDo** (`opendo`), but `wrangler.jsonc` intentionally keeps its existing Cloudflare Worker service name **`dsgo-web`** and existing custom domain. This prevents accidentally creating a second Worker or losing access to the existing production Durable Object. Forks must change the service name, routes, invitation hashes, and secrets before deployment. The local development directory name does not need to match the Cloudflare service name.
 
 ## Development
 
