@@ -69,7 +69,7 @@ More protocol details: [docs/tasks.md](docs/tasks.md).
 
 ### Planned harness integrations
 
-- [DeepSeek Harness / DSH Runner](https://github.com/picasso250/opendo/issues/1) — separate Worker; possible design and latency advantages must be measured rather than assumed.
+- [DeepSeek Harness / DSH Runner](https://github.com/picasso250/opendo/issues/1) — an independent **experimental** adapter ([setup guide](docs/dsh-runner.md)); possible design and latency advantages must be measured rather than assumed.
 - [WorkBuddy Runner for Xiaolai](https://github.com/picasso250/opendo/issues/2) — another independent harness and a test of the protocol's interoperability.
 
 ## Security and limits

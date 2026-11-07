@@ -16,3 +16,6 @@ runner.local.json
 
 # Private local verification helper from the pre-open-source workspace.
 /verify-results.cjs
+
+# Dedicated DeepSeek Harness worker diagnostic records.
+.dsh-runner-state/
