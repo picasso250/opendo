@@ -42,6 +42,7 @@ async function request(action,body={}){
 }
 
 async function executeAndComplete(task){
+  if(!/^task_[a-f0-9]{32}$/.test(String(task?.id)))throw Error('Invalid Task ID');
   const taskDir=resolve(stateDir,task.id);
   await mkdir(taskDir,{recursive:true});
   await writeFile(resolve(taskDir,'task.txt'),task.instructions,'utf8');
@@ -72,8 +73,27 @@ async function executeAndComplete(task){
   console.log(task.id,'=>',response.status,response.late?'(late result)':'');
 }
 
+// Fail closed before announcing an available Worker: a desktop install alone
+// does not imply the headless model credential is present. A short preflight
+// prevents claiming live Tasks only to fail with MISSING_CREDENTIAL.
+try{
+  const verified=await executeDshHeadless({
+    instructions:'Reply with only OPENDO_DSH_READY. Do not call tools or change files.',
+    deadline_at:Date.now()+90_000
+  },{cwd,launch,env});
+  if(verified.status!=='completed'||!verified.output.includes('OPENDO_DSH_READY')){
+    const reason=/MISSING_CREDENTIAL|no API key|provider route/i.test(verified.stderr||'')
+      ?'missing model API key in headless DSH'
+      :'headless smoke did not return the expected result';
+    throw Error(reason);
+  }
+}catch(err){
+  console.error('Refusing to register DSH Worker: preflight failed ('+err.message+').');
+  console.error('Set up DSH Models or a local model API key and retry; no Task was claimed.');
+  process.exit(2);
+}
 await mkdir(stateDir,{recursive:true});
-console.log('DSH Runner starting; separate Worker token configured; poll every',pollMs/1000,'seconds.');
+console.log('DSH Runner preflight passed; starting Worker polling every',pollMs/1000,'seconds.');
 let session=null;
 let stopping=false;
 process.on('SIGINT',()=>{stopping=true});

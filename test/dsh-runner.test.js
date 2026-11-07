@@ -94,6 +94,9 @@ test('OpenDo DSH integration does not depend on the Codex runner or change the W
   assert.match(source,/catalog_session_id/);
   assert.match(source,/request\('heartbeat'/);
   assert.match(source,/request\('complete'/);
+  assert.match(source,/Refusing to register DSH Worker: preflight failed/);
+  assert.match(source,/Invalid Task ID/);
   assert.match(helper,/shell:false/);
-  assert.match(helper,/--profile','headless','-'/);
+  assert.match(helper,/--permission-mode','workspace-write'/);
+  assert.match(helper,/--approval-policy','never'/);
 });

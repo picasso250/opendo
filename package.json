@@ -12,7 +12,8 @@
     "deploy": "npm run check && wrangler deploy",
     "generate:invites": "node scripts/create-group-invites.mjs",
     "personas:build": "node scripts/build-personas.mjs",
-    "runner:dsh": "node scripts/dsh-runner.mjs"
+    "runner:dsh": "node scripts/dsh-runner.mjs",
+    "runner:dsh:smoke": "node scripts/dsh-smoke.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "latest",
