@@ -1,0 +1,15 @@
+node_modules/
+.wrangler/
+.dev.vars*
+.env*
+worker-configuration.d.ts
+npm-debug.log*
+*.out.log
+*.err.log
+
+# Never commit group invite URLs, codes, or locally configured secrets.
+.group-invites.local.json
+# Local worker process state, logs and output (may contain sensitive contents).
+.runner-state/
+.worker-token.local.json
+runner.local.json

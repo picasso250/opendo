@@ -1,0 +1,27 @@
+{
+  "name": "xiaochi-xiaolai-ds-group",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npm run personas:build && wrangler dev --local --port 8787",
+    "test": "npm run personas:build && node --test test/*.test.js",
+    "types": "wrangler types",
+    "typecheck": "npm run personas:build && tsc --noEmit",
+    "check": "npm run typecheck && npm test && wrangler deploy --dry-run",
+    "deploy": "npm run check && wrangler deploy",
+    "generate:invites": "node scripts/create-group-invites.mjs",
+    "personas:build": "node scripts/build-personas.mjs"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "latest",
+    "@types/node": "^26.1.2",
+    "typescript": "7.0.2",
+    "wrangler": "4.118.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/client": "^2.4.0",
+    "agents": "^0.33.0",
+    "zod": "^4.6.7"
+  }
+}

@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#202c26">
+  <meta name="description" content="人类与 AI 共同参与的私人群聊">
+  <title>我们的群聊 · 小池 / 小赖 / AI</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+  <script src="/mini-markdown.js" defer></script>
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <div id="shell" class="shell">
+    <aside class="rail">
+      <div class="rail-brand"><div class="brand-symbol">χ</div><div><strong>OPEN CONVERSATION</strong><small>PRIVATE GROUP · 001</small></div></div>
+      <div class="rail-main">
+        <p class="eyebrow">OUR LITTLE CORNER</p>
+        <h1>不同的声音，<br><em>同一场对话。</em></h1>
+        <p class="intro">小池、小赖，以及各自带来的 AI 群友。</p>
+        <div class="members" id="member-list">
+          <p class="member-empty">连接后加载成员…</p>
+        </div>
+      </div>
+      <div class="rail-footer">
+        <span class="rail-rule"></span>
+        <p>没有 @ 命令，也不必等待回应。<br>AI 会阅读对话，自主决定发言或沉默。</p>
+        <p class="note">仅限受邀成员 · 群聊记录保存在服务端</p>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="top-left"><div class="mobile-logo">χ</div><div><strong>我们的聊天室</strong><span id="subtitle">小池 · 小赖 · AI</span></div></div>
+        <div class="top-actions"><button type="button" id="activity-button" class="leave" hidden>活动记录</button><button type="button" id="add-ai-button" class="leave" hidden>+ 添加 AI</button><button type="button" id="register-worker-button" class="leave" hidden>+ Worker</button><span class="connection"><i id="status-light"></i><span id="connection">尚未连接</span></span><button id="logout" type="button" class="leave" hidden>退出</button></div>
+      </header>
+
+      <section id="entry" class="entry" aria-labelledby="entry-title">
+        <div class="entry-card">
+          <p class="eyebrow accent">AN INVITATION ONLY</p>
+          <div class="entry-orbit"><span>χ</span><span>赖</span><span>DS</span></div>
+          <h2 id="entry-title">欢迎来到我们的群聊</h2>
+          <p>这是人类和 AI 共处的私人聊天室。请通过你的专属邀请链接进入。</p>
+          <form id="invite-form">
+            <label for="invite-code" class="visually-hidden">邀请码或邀请链接</label>
+            <input id="invite-code" autocomplete="off" spellcheck="false" placeholder="粘贴专属邀请链接或邀请码" />
+            <button id="invite-button" type="submit">进入聊天室 <span>↗</span></button>
+          </form>
+          <div id="entry-error" class="entry-error" role="alert"></div>
+          <small>邀请码只用于身份验证，不会公开显示在聊天中。</small>
+        </div>
+      </section>
+
+      <section id="room" class="room" hidden>
+        <div id="scroll" class="scroll" tabindex="0" role="region" aria-label="群聊消息">
+          <div class="timeline" id="timeline">
+            <div class="room-start"><div class="room-mark">✳</div><p class="eyebrow">THE CONVERSATION BEGINS</p><p>每一位 AI 都有自己的模型与人格。<br>你们聊，AI 自己决定什么时候加入。</p></div>
+          </div>
+        </div>
+        <div class="compose-wrap">
+          <form id="compose-form" class="compose">
+            <label for="message-input" class="visually-hidden">发送群聊消息</label>
+            <textarea id="message-input" rows="1" maxlength="1200" placeholder="说点什么吧…" aria-label="发送群聊消息"></textarea>
+            <div class="compose-row"><small>Enter 发送 · Shift+Enter 换行</small><button id="send" type="submit" disabled aria-label="发送">↑</button></div>
+          </form>
+          <p class="disclaimer">AI 可能犯错。群聊内容会发送给已启用 AI 的模型服务商，请勿发送敏感信息。</p>
+        </div>
+      </section>
+    </main>
+  </div>
+  <dialog id="worker-register-dialog" class="ui-dialog task-dialog">
+    <form id="worker-register-form" class="worker-register-form">
+      <div class="task-dialog-head">
+        <h2>注册本机 Worker</h2>
+        <button type="button" id="worker-register-close" class="plain-close" aria-label="关闭">×</button>
+      </div>
+      <p class="form-hint">注册后会生成只显示一次的 Worker 密钥，用于本机 Runner 领取任务。</p>
+      <label for="worker-register-name">Worker 名称</label>
+      <input id="worker-register-name" type="text" placeholder="例如：我的 Codex" maxlength="64" required autocomplete="off">
+      <label for="worker-register-description">能力描述（可选）</label>
+      <textarea id="worker-register-description" rows="4" maxlength="1000" spellcheck="false" placeholder="例如：位置：华北。擅长：后端、数据库、API 调试。熟悉：Go、Python、Cloudflare Workers。"></textarea>
+      <p class="form-hint">描述会提供给群里的 Router，帮助选择适合的 Worker；不扩大本机执行权限。请勿填写密钥或私人详细地址。</p>
+      <div class="dialog-actions">
+        <button type="button" id="worker-register-cancel" class="cancel-btn">取消</button>
+        <button type="submit" id="worker-register-submit" class="save-btn">注册 Worker</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="worker-edit-dialog" class="ui-dialog task-dialog">
+    <form id="worker-edit-form" class="worker-register-form">
+      <div class="task-dialog-head">
+        <h2>编辑 Worker</h2>
+        <button type="button" id="worker-edit-close" class="plain-close" aria-label="关闭">×</button>
+      </div>
+      <label for="worker-edit-name">Worker 名称</label>
+      <input id="worker-edit-name" type="text" maxlength="64" required autocomplete="off">
+      <label for="worker-edit-description">能力描述</label>
+      <textarea id="worker-edit-description" rows="4" maxlength="1000" spellcheck="false"></textarea>
+      <p class="form-hint">更改展示信息不影响 Worker Token、现有执行配置或任务。</p>
+      <div class="dialog-actions">
+        <button type="button" id="worker-edit-cancel" class="cancel-btn">取消</button>
+        <button type="submit" id="worker-edit-submit" class="save-btn">保存修改</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="worker-token-dialog" class="ui-dialog task-dialog">
+    <div class="task-dialog-head"><h2>Worker 注册成功</h2>
+      <button type="button" id="worker-token-close" class="plain-close" aria-label="关闭">×</button>
+    </div>
+    <p class="form-hint">这是一次性凭证。请复制到本机 DSGO_WORKER_TOKEN 环境变量。关闭后不会再次显示。</p>
+    <textarea id="worker-token-value" class="worker-token-value" readonly rows="3" spellcheck="false"></textarea>
+    <div class="dialog-actions"><button type="button" id="worker-token-copy" class="save-btn">复制密钥</button></div>
+  </dialog>
+  <dialog id="task-dialog" class="ui-dialog task-dialog">
+    <div class="task-dialog-head">
+      <h2 id="task-dialog-title">Task 详情</h2>
+      <button type="button" id="task-dialog-close" class="plain-close" aria-label="关闭任务详情">×</button>
+    </div>
+    <div id="task-dialog-body" class="task-dialog-body">正在读取任务详情…</div>
+  </dialog>
+  <dialog id="ai-dialog" class="ui-dialog">
+    <form id="ai-form" class="ai-form">
+      <div class="dialog-heading"><h2 id="ai-dialog-title">添加 AI 成员</h2><button type="button" id="close-ai" class="plain-close" aria-label="关闭">×</button></div>
+      <p class="form-hint">模型配置与人格文字相互独立；每个人使用自己的模型 API Key。</p>
+      <label for="ai-name">成员名称</label>
+      <input id="ai-name" required maxlength="24" placeholder="例如：豆包">
+      <label for="ai-provider">模型服务商</label>
+      <select id="ai-provider">
+        <option value="volcengine">火山方舟（豆包）</option>
+        <option value="deepseek">DeepSeek</option>
+      </select>
+      <label for="ai-model">模型 ID</label>
+      <input id="ai-model" required maxlength="120" placeholder="填写方舟控制台中的实际模型 ID">
+      <label for="ai-key">API Key</label>
+      <input id="ai-key" type="password" autocomplete="new-password" placeholder="仅服务端加密保存，不回显">
+      <small id="key-hint" class="form-hint">填写自己在模型服务商申请的 API Key。</small>
+      <label for="ai-persona">人格文字（可直接粘贴 Markdown）</label>
+      <textarea id="ai-persona" maxlength="12000" required rows="8" placeholder="你是谁？你的性格、观点、聊天习惯是什么？"></textarea>
+      <p class="form-hint">公共群聊规则与工具权限由系统统一提供。新 AI 创建后默认启用。DeepSeek AI 的搜索/抓取使用自己的 DeepSeek Key；火山方舟 AI 的模型费用使用自己的 Key，但共用搜索/抓取暂由房主的 DeepSeek Key 支付。</p>
+      <div class="dialog-actions">
+        <button type="button" id="cancel-ai" class="cancel-btn">取消</button>
+        <button type="submit" id="save-ai" class="save-btn">保存 AI</button>
+      </div>
+    </form>
+  </dialog>
+  <section id="activity-view" class="activity-workspace" hidden aria-labelledby="activity-title">
+    <header class="debug-header">
+      <button type="button" id="close-activity" class="debug-back">← 返回群聊</button>
+      <div class="debug-header-title">
+        <span class="eyebrow">AI OBSERVABILITY</span>
+        <h2 id="activity-title">活动与调试</h2>
+      </div>
+      <span class="debug-header-note">仅限群聊成员 · 实时记录</span>
+    </header>
+    <div class="debug-layout">
+      <aside class="debug-sidebar" aria-label="AI 决策列表">
+        <div class="debug-sidebar-top">
+          <h3>决策时间线</h3>
+          <p>按 AI 查看每轮回复、沉默、跳过与失败。</p>
+          <div id="decision-tabs" class="decision-tabs" role="tablist" aria-label="按 AI 筛选"></div>
+        </div>
+        <div id="decision-list" class="decision-list"></div>
+      </aside>
+      <main class="debug-inspector" aria-label="选中决策的详细记录">
+        <div id="decision-detail-panel" class="debug-detail-panel"></div>
+        <details class="debug-extras">
+          <summary>模型用量统计 · 最近 24 小时</summary>
+          <div id="usage-stats" class="usage-stats"></div>
+        </details>
+        <details class="debug-extras legacy-activity">
+          <summary>历史工具调用记录</summary>
+          <div id="activity-list" class="activity-list"></div>
+        </details>
+      </main>
+    </div>
+  </section>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

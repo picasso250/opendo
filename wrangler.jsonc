@@ -1,0 +1,56 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "dsgo-web",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-04",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": [
+      "/api/*"
+    ]
+  },
+  "vars": {
+    "DEEPSEEK_BASE_URL": "https://api.deepseek.com",
+    "DEEPSEEK_MODEL": "deepseek-flash"
+  },
+  "secrets": {
+    "required": [
+      "DEEPSEEK_API_KEY",
+      "GROUP_XIAOCHI_HASH",
+      "GROUP_XIAOLAI_HASH",
+      "AI_KEY_ENCRYPTION_SECRET"
+    ]
+  },
+  "routes": [
+    {
+      "pattern": "chat.io99.xyz",
+      "custom_domain": true
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "head_sampling_rate": 1
+    }
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "GroupRoom",
+        "class_name": "GroupRoom"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "group-v1",
+      "new_sqlite_classes": [
+        "GroupRoom"
+      ]
+    }
+  ],
+  "compatibility_flags": [
+    "nodejs_compat"
+  ]
+}

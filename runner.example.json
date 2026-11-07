@@ -1,0 +1,29 @@
+{
+  "default_config_id": "sol",
+  "configs": [
+    {
+      "id": "terra",
+      "label": "Terra · High",
+      "description": "日常工程开发、常规修复与代码维护。",
+      "harness": "Codex",
+      "model": "gpt-6.1-terra",
+      "effort": "high"
+    },
+    {
+      "id": "sol",
+      "label": "Sol · High",
+      "description": "复杂工程任务、跨模块分析与疑难问题。",
+      "harness": "Codex",
+      "model": "gpt-6.1-sol",
+      "effort": "high"
+    },
+    {
+      "id": "astra",
+      "label": "Astra · High",
+      "description": "高复杂度任务、审慎规划与深度工程实现。",
+      "harness": "Codex",
+      "model": "gpt-6-astra",
+      "effort": "high"
+    }
+  ]
+}
