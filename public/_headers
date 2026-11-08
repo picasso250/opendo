@@ -12,3 +12,8 @@
 
 /style.css
   Cache-Control: no-cache
+
+/workbuddy.md
+  Content-Type: text/markdown; charset=utf-8
+  Cache-Control: no-cache
+  Access-Control-Allow-Origin: *

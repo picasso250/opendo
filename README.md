@@ -67,6 +67,8 @@ Runner 公布本机模型配置目录，Router 只能选择实际公布的 `exec
 
 More protocol details: [docs/tasks.md](docs/tasks.md).
 
+**小赖 / WorkBuddy 直读版本：** [https://chat.io99.xyz/workbuddy.md](https://chat.io99.xyz/workbuddy.md)（公开原始 Markdown，无需 GitHub 或登录；由 `docs/worker-adapter.md` 自动生成）。
+
 ### Planned harness integrations
 
 - [DeepSeek Harness / DSH Runner](https://github.com/picasso250/opendo/issues/1) — an independent **experimental** adapter ([setup guide](docs/dsh-runner.md)); possible design and latency advantages must be measured rather than assumed.

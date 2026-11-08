@@ -4,16 +4,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "npm run personas:build && wrangler dev --local --port 8787",
+    "dev": "npm run docs:build && npm run personas:build && wrangler dev --local --port 8787",
     "test": "npm run personas:build && node --test test/*.test.js",
     "types": "wrangler types",
     "typecheck": "npm run personas:build && npm run types && tsc --noEmit",
-    "check": "npm run typecheck && npm test && wrangler deploy --dry-run",
+    "check": "npm run docs:build && npm run typecheck && npm test && wrangler deploy --dry-run",
     "deploy": "npm run check && wrangler deploy",
     "generate:invites": "node scripts/create-group-invites.mjs",
     "personas:build": "node scripts/build-personas.mjs",
     "runner:dsh": "node scripts/dsh-runner.mjs",
-    "runner:dsh:smoke": "node scripts/dsh-smoke.mjs"
+    "runner:dsh:smoke": "node scripts/dsh-smoke.mjs",
+    "docs:build": "node scripts/build-workbuddy-guide.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "latest",
