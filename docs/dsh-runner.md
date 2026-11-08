@@ -40,7 +40,7 @@ The Worker performs a similar **fail-closed preflight on startup**. If DSH canno
 
 ### Permissions
 
-The adapter explicitly supplies `--permission-mode workspace-write --approval-policy never` in the DSH CLI, also sets `DSH_PERMISSION_MODE=workspace-write` and `DSH_TOOLS_MODE=native` in the child environment, and never passes Task text as command-line flags. **Do not assume these settings form a security boundary without confirming their meaning in your installed DSH release.** Start in a disposable trusted workspace with no private secrets. WorkBuddy/Codex/DSH sandbox semantics may differ; none are interchangeable.
+The adapter explicitly supplies `--permission-mode workspace-write --approval-policy never` in the DSH CLI, also sets `DSH_PERMISSION_MODE=workspace-write` and `DSH_TOOLS_MODE=native` in the child environment, and never passes Task text as command-line flags. **Do not assume these settings form a security boundary without confirming their meaning in your installed DSH release.** Start in a disposable trusted workspace with no private secrets. **Windows unattended execution is gated OFF by default:** official Windows file sandbox reports partial enforcement, and file reads/network are not restricted by file-effect modes. Only for a dedicated isolated OS account or VM, and after accepting those risks, set `DSGO_DSH_ACCEPT_PARTIAL_SANDBOX=YES_I_ACCEPT_HOST_READ_NETWORK_RISK` in the Runner shell. `runner:dsh:smoke` needs no such acknowledgment because it executes only a fixed harmless check. WorkBuddy/Codex/DSH sandbox semantics may differ; none are interchangeable.
 
 ## Register and run independently
 
@@ -52,7 +52,7 @@ The adapter explicitly supplies `--permission-mode workspace-write --approval-po
 ```powershell
 cd "$HOME\projects\opendo"
 
-$env:DSGO_DSH_WORKDIR = Join-Path $env:TEMP "opendo-dsh-experiment-workspace"
+$env:DSGO_DSH_WORKDIR = Join-Path $HOME "opendo-dsh-workspace"
 $env:DSGO_DSH_URL = 'https://chat.io99.xyz'
 
 # Create the isolated directory if necessary.
@@ -80,3 +80,9 @@ See [`worker-adapter.md`](worker-adapter.md) for the generic Worker protocol and
 ## Live verification notes
 
 The first real integration Task was a harmless read-only request; the isolated DSH Runner returned the expected final text, and the server's `task_detail` confirmed status `completed` with configuration `dsh-default`. This verifies the HTTP protocol and headless execution route, **not** that the DSH sandbox prevents every prohibited operation. The test used an isolated directory below the local Windows Temp folder and no production repository writes.
+
+## File-policy probe and Windows limitations
+
+DSH documents that `workspace-write` permits writes under the configured workspace **and platform temporary areas**. An initial test using two sibling directories under `%TEMP%` allowed both writes, so it did **not** establish a sandbox escape. A corrected test using two clean sibling directories under the repo's ignored `.dsh-runner-state/` directory created the workspace file but **did not** create the non-temp sibling file. This is a useful limited check, **not** a comprehensive audit.
+
+References: [file sandbox policy](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/fs/fs-sandbox/README.md), [Windows ACL sandbox](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/sandbox/sandbox-windows-acl/README.md), and [documented partial enforcement](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/subsystems/sandbox.md). Reads and network activity are not confined by these file-effect permissions. Because the Windows host also contains unrelated private work, the registered DSH Worker remains **paused** after the controlled integration test. Do not resume unattended operation without appropriate OS-level isolation.

@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {spawnSync} from 'node:child_process';
 import assert from 'node:assert/strict';
 import {mkdtempSync,mkdirSync,writeFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
@@ -167,5 +168,21 @@ test('DSH Worker local token rejects mismatched ID and secrets',async()=>{
     writeFileSync(path,JSON.stringify({worker_id:'worker_'+'a'.repeat(32),token:'not-a-token'}));
     await assert.rejects(()=>loadDshWorkerToken({}, {localPath:path}),/mismatch/);
     await assert.rejects(()=>loadDshWorkerToken({DSGO_DSH_WORKER_TOKEN:'bad'}, {localPath:path}),/Invalid DSH Worker token/);
+  }finally{rmSync(temp,{recursive:true,force:true})}
+});
+
+test('Windows Runner refuses unattended remote Task execution without explicit host-risk acknowledgment',()=>{
+  if(process.platform!=='win32')return;
+  const temp=mkdtempSync(join(tmpdir(),'opendo-dsh-risk-gate-'));
+  try{
+    const env={...process.env,DSGO_DSH_WORKER_TOKEN:'worker_'+'a'.repeat(32)+'.'+'b'.repeat(64),
+      DSGO_DSH_WORKDIR:temp,DSGO_DSH_URL:'https://chat.io99.xyz',
+      DSGO_DSH_ACCEPT_PARTIAL_SANDBOX:''};
+    const result=spawnSync(process.execPath,['scripts/dsh-runner.mjs'],{
+      cwd:fileURLToPath(new URL('..',import.meta.url)),env,encoding:'utf8',timeout:10000
+    });
+    assert.equal(result.status,2);
+    assert.match(result.stderr,/unattended execution blocked on Windows/);
+    assert.doesNotMatch(result.stderr,/worker_a{32}/);
   }finally{rmSync(temp,{recursive:true,force:true})}
 });
