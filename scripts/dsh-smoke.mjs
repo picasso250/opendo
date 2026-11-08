@@ -3,17 +3,20 @@ import {mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {resolveDshLaunch,executeDshHeadless} from './dsh-headless.mjs';
+import {loadDshProviderEnvironment} from './dsh-credentials.mjs';
 
 let cwd;
 try{
   cwd=await mkdtemp(join(tmpdir(),'opendo-dsh-smoke-'));
   const launch=resolveDshLaunch(process.env);
+  const provider=await loadDshProviderEnvironment(process.env);
+  console.log('DSH model credential source:',provider.source);
   console.log('Checking local DSH headless in an isolated temporary workspace.');
   const started=Date.now();
   const result=await executeDshHeadless({
     instructions:'Respond with only this text: OPENDO_DSH_READY. Do not use tools or modify files.',
     deadline_at:Date.now()+90_000
-  },{cwd,launch,env:process.env});
+  },{cwd,launch,env:provider.env});
   if(result.status!=='completed'||!result.output.includes('OPENDO_DSH_READY')){
     const details=result.stderr||'';
     if(/MISSING_CREDENTIAL|no API key|provider route/i.test(details))

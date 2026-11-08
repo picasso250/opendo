@@ -2,7 +2,7 @@
 
 A separate local Worker adapter for **DeepSeek Harness (DSH)**. This does **not** require modifying `scripts/runner.mjs` (the Codex Runner) or changing the existing Cloudflare Worker / Task protocol.
 
-> Status: adapter implemented and tested against an offline mock. The actual installed DSH binary **must be retested after a desktop app upgrade**, especially its CLI arguments, permissions and model authentication. Do not register it as production-ready until a real headless smoke test succeeds.
+> Status: **live end-to-end verified** on DSH 0.2.2-rc.1: locally loaded model key, startup preflight, separate Worker registration, catalog, Task creation/claim/execute/complete, and raw Task detail. This is still experimental: the effective DSH workspace sandbox and execution authorization require ongoing review.
 
 ## Desktop DSH on Windows
 
@@ -18,21 +18,25 @@ If the desktop app is installed elsewhere, set `DSGO_DSH_INSTALL_DIR` to its ins
 
 ### Model authentication
 
-The initial real smoke test on DSH 0.2.1-rc.2 started the CLI but **exited without an answer because the headless process did not receive the model provider credential**. On **0.2.2-rc.1**, the CLI and permission flags work, but the real local model call still reports `MISSING_CREDENTIAL: llm-deepseek` for provider route `deepseek-official`. Configure the key before the next real Task test. The login to the desktop UI does not prove headless CLI authentication. After upgrading, first verify headless execution in an **isolated empty directory**, with the model credentials required by the installed DSH version. The Runner allows a deliberately narrow set of common provider environment keys (such as `DEEPSEEK_API_KEY`) to pass to DSH. It never forwards OpenDo Worker bearer tokens or GitHub/Cloudflare administrator tokens.
+A real DSH 0.2.2-rc.1 headless prompt succeeded after loading the key from `~/.deepseek.key` (the actual filename on the Windows machine). The adapter now **automatically** reads that private file when `DEEPSEEK_API_KEY` is not already set.
 
-Do not paste a model key into the OpenDo chat or commit it to Git; set it in a local shell/session only as required for your own DSH configuration. If the updated DSH supports credential retrieval from its own secure local store, prefer that instead. Never reuse a private Cloudflare Secret just to make a local smoke test pass.
+Priority: (1) an explicitly set `DEEPSEEK_API_KEY` environment variable; (2) `DSGO_DSH_KEY_FILE` if supplied, otherwise `~/.deepseek.key`; (3) fail-closed preflight if no valid provider key is available. The key file contains **only the key text** plus an optional trailing newline. The loader does not print its contents or mutate `process.env`.
+
+This is intentionally a **local** convenience: keep the key file outside Git, with permissions limited to your Windows user. DSH receives the provider key in its child-process environment because the model API requires it. It will **not** receive the OpenDo Worker bearer token. Nevertheless, a coding agent may access process environment or files through its tools; run only with the minimum necessary permissions, in a disposable workspace with no unrelated secrets.
+
+Do not paste a model key into OpenDo, an Issue/PR, or chat, and do not reuse a production Cloudflare Secret merely to make a smoke test pass.
 
 ### First, verify the local model works (no Worker Token needed)
 
-After configuring the model in DSH's **Models** page, open PowerShell in the OpenDo repository and run:
+For the installed Windows setup, no manual PowerShell key export is needed once the private `~/.deepseek.key` file exists. Run:
 
 ```powershell
 npm run runner:dsh:smoke
 ```
 
-This sends one harmless headless prompt in a disposable temporary folder. It deliberately does **not** register, claim, or complete a room Task; model usage may be billed by your provider. For the current `deepseek-official` route, the CLI may also accept a locally configured `DEEPSEEK_API_KEY` environment variable. **Use a separate restricted provider key rather than the key used by the production group.** Do not paste secrets into chat or Git.
+This sends one harmless headless prompt in a disposable temporary folder. It deliberately does **not** register, claim, or complete a room Task; model usage may be billed by your provider. The credential loader can also use `$env:DSGO_DSH_KEY_FILE` (an absolute file path) or an already-set `$env:DEEPSEEK_API_KEY`. No key contents are echoed. **Use a separately scoped provider key where available** and never commit it to Git.
 
-The Worker itself now performs a similar **fail-closed preflight on startup**. If DSH cannot answer, the Runner exits without publishing a Worker catalog or claiming a live Task.
+The Worker performs a similar **fail-closed preflight on startup**. If DSH cannot answer, the Runner exits without publishing a Worker catalog or claiming a live Task.
 
 ### Permissions
 
@@ -40,17 +44,15 @@ The adapter explicitly supplies `--permission-mode workspace-write --approval-po
 
 ## Register and run independently
 
-1. Open the OpenDo chat and register **a new Worker named DSH**. Do not reuse the token of the running Codex Worker.
-2. Copy the new one-time Worker Token and configure it **only in the local shell running DSH**.
+1. Open the OpenDo chat and register **a new Worker named DSH**. Do not reuse the Codex Worker token. An existing verified DSH registration must be reused, not duplicated.
+2. Save the one-time token in **gitignored** `opendo/.dsh-worker.local.json` as `{"worker_id":"worker_…","token":"worker_….<secret>"}`. An explicit `DSGO_DSH_WORKER_TOKEN` environment variable takes precedence. Never reuse the Codex token. During initial integration, the registration token was saved by a local one-time helper and is not visible in Git.
 3. Set a dedicated trusted work directory. Make it a disposable test directory initially. Do not use your entire home directory.
 4. Run `npm run runner:dsh:smoke` and confirm success before allowing Router to send real work. The Worker repeats this preflight at startup.
 
 ```powershell
 cd "$HOME\projects\opendo"
 
-# Paste the NEW token here, not the Codex Worker token.
-$env:DSGO_DSH_WORKER_TOKEN = Read-Host 'DSH Worker Token'
-$env:DSGO_DSH_WORKDIR = Join-Path $env:TEMP "opendo-dsh-sandbox"
+$env:DSGO_DSH_WORKDIR = Join-Path $env:TEMP "opendo-dsh-experiment-workspace"
 $env:DSGO_DSH_URL = 'https://chat.io99.xyz'
 
 # Create the isolated directory if necessary.
@@ -59,6 +61,8 @@ New-Item -ItemType Directory -Force $env:DSGO_DSH_WORKDIR | Out-Null
 npm run runner:dsh
 ```
 
+The adapter reads `.dsh-worker.local.json` automatically if no `DSGO_DSH_WORKER_TOKEN` environment variable is set. The credential file is ignored by Git and remains on this machine.
+
 The adapter advertises **one configuration**, `dsh-default`, and leaves model and effort as unknown (`null`) until they can be verified from the installed DSH CLI. It polls each minute, uses catalog sessions, sends heartbeats, and preserves headless stdout exactly as the task result. Stderr stays only in an ignored local diagnostics file: `.dsh-runner-state/<task-id>/diagnostics.txt`.
 
 No interactive desktop window is launched; the script launches the bundled CLI. The existing Codex Runner may run simultaneously with its own token. If DSH cannot execute, **stop the DSH Runner**: do not let it claim and fail production tasks repeatedly. Never run two DSH Runners sharing one token.
@@ -66,9 +70,13 @@ No interactive desktop window is launched; the script launches the bundled CLI. 
 ## Acceptance criteria
 
 - [x] Confirm updated DSH CLI version 0.2.2-rc.1 and `--profile headless --help` syntax; sandbox semantics still require real security verification.
-- [ ] Confirm headless can answer one harmless prompt with its own model credential, in an empty directory (currently blocked by `MISSING_CREDENTIAL`).
-- [ ] Register a separate DSH Worker and see `dsh-default` in OpenDo.
-- [ ] Send one harmless Task; confirm original output and one terminal `task_result`.
+- [x] Confirm headless can answer one harmless prompt with its own model credential, in an isolated temporary directory (real test passed after reading `~/.deepseek.key`).
+- [x] Register a separate DSH Worker and see `dsh-default` in OpenDo.
+- [x] Send one harmless live Task; confirm original output and one terminal `task_result` (result contained `OPENDO_DSH_E2E_OK`; status `completed`).
 - [ ] Compare time-to-result and output quality with Codex on the same small, safe tasks; do not assert DSH is faster or aesthetically stronger before measuring.
 
 See [`worker-adapter.md`](worker-adapter.md) for the generic Worker protocol and its safety contract.
+
+## Live verification notes
+
+The first real integration Task was a harmless read-only request; the isolated DSH Runner returned the expected final text, and the server's `task_detail` confirmed status `completed` with configuration `dsh-default`. This verifies the HTTP protocol and headless execution route, **not** that the DSH sandbox prevents every prohibited operation. The test used an isolated directory below the local Windows Temp folder and no production repository writes.

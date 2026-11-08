@@ -5,17 +5,19 @@
 import {mkdir,writeFile} from 'node:fs/promises';
 import {resolve,isAbsolute} from 'node:path';
 import {DSH_CATALOG,executeDshHeadless,resolveDshLaunch} from './dsh-headless.mjs';
+import {loadDshProviderEnvironment,loadDshWorkerToken} from './dsh-credentials.mjs';
 
 const env=process.env;
 const url=(env.DSGO_DSH_URL||'https://chat.io99.xyz').replace(/\/$/,'');
-const token=env.DSGO_DSH_WORKER_TOKEN||'';
+let token;
+try{
+  const credential=await loadDshWorkerToken(env);
+  token=credential.token;
+  console.log('DSH Worker credential source:',credential.source);
+}catch(e){console.error(e.message);process.exit(2)}
 const cwd=env.DSGO_DSH_WORKDIR||'';
 const stateDir=resolve(env.DSGO_DSH_STATE_DIR||'.dsh-runner-state');
 const pollMs=60_000,heartbeatMs=120_000;
-if(!/^worker_[a-f0-9]{32}\.[a-f0-9]{64}$/.test(token)){
-  console.error('Register a separate DSH Worker in OpenDo and set DSGO_DSH_WORKER_TOKEN locally.');
-  process.exit(2);
-}
 if(!cwd||!isAbsolute(cwd)){
   console.error('Set DSGO_DSH_WORKDIR to an explicit trusted absolute directory.');
   process.exit(2);
@@ -26,6 +28,16 @@ if(!/^https:\/\//.test(url)&&!/^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/.t
 }
 let launch;
 try{launch=resolveDshLaunch(env)}catch(e){console.error(e.message);process.exit(2)}
+// Keep the key out of process.env: only the DSH child receives it.
+let dshEnv;
+try{
+  const resolved=await loadDshProviderEnvironment(env);
+  dshEnv=resolved.env;
+  console.log('DSH model credential source:',resolved.source);
+}catch(e){
+  console.error('Cannot load DSH model credential:',e.message);
+  process.exit(2);
+}
 
 async function request(action,body={}){
   const res=await fetch(url+'/api/worker/'+action,{
@@ -59,7 +71,7 @@ async function executeAndComplete(task){
     if(task.execution_config_id!==null&&task.execution_config_id!=='dsh-default')
       throw Error('Unsupported execution_config_id: '+String(task.execution_config_id));
     console.log('Executing',task.id,'with local DSH headless profile in',cwd);
-    report=await executeDshHeadless(task,{cwd,launch,env});
+    report=await executeDshHeadless(task,{cwd,launch,env:dshEnv});
   }catch(e){report={status:'failed',output:'[DSH Runner error] '+String(e.message),stderr:''}}
   finally{clearInterval(heartbeat)}
   await writeFile(resolve(taskDir,'result.txt'),report.output,'utf8');
@@ -80,7 +92,7 @@ try{
   const verified=await executeDshHeadless({
     instructions:'Reply with only OPENDO_DSH_READY. Do not call tools or change files.',
     deadline_at:Date.now()+90_000
-  },{cwd,launch,env});
+  },{cwd,launch,env:dshEnv});
   if(verified.status!=='completed'||!verified.output.includes('OPENDO_DSH_READY')){
     const reason=/MISSING_CREDENTIAL|no API key|provider route/i.test(verified.stderr||'')
       ?'missing model API key in headless DSH'

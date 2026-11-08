@@ -8,6 +8,7 @@ import {
   resolveDshLaunch,dshChildEnvironment,executeDshHeadless,DSH_CATALOG
 } from '../scripts/dsh-headless.mjs';
 import {readFileSync} from 'node:fs';
+import {loadDshProviderEnvironment,loadDshWorkerToken} from '../scripts/dsh-credentials.mjs';
 
 const fixture=fileURLToPath(new URL('./fixtures/fake-dsh-headless.mjs',import.meta.url));
 const fakeLaunch={command:process.execPath,prefix:[fixture],electron:false};
@@ -90,7 +91,7 @@ test('OpenDo DSH integration does not depend on the Codex runner or change the W
   assert.equal(DSH_CATALOG.default_config_id,'dsh-default');
   assert.equal(DSH_CATALOG.configs[0].harness,'DeepSeek Harness');
   assert.equal(DSH_CATALOG.configs[0].model,null);
-  assert.match(source,/DSGO_DSH_WORKER_TOKEN/);
+  assert.match(source,/loadDshWorkerToken/);
   assert.match(source,/catalog_session_id/);
   assert.match(source,/request\('heartbeat'/);
   assert.match(source,/request\('complete'/);
@@ -99,4 +100,72 @@ test('OpenDo DSH integration does not depend on the Codex runner or change the W
   assert.match(helper,/shell:false/);
   assert.match(helper,/--permission-mode','workspace-write'/);
   assert.match(helper,/--approval-policy','never'/);
+});
+
+test('load DSH provider key from a private home file without mutating caller env',async()=>{
+  const temp=mkdtempSync(join(tmpdir(),'opendo-dsh-key-'));
+  try{
+    const key='test-deepseek-key-do-not-use-outside-tests';
+    writeFileSync(join(temp,'.deepseek.key'),key+'\r\n');
+    const original={DSGO_DSH_WORKER_TOKEN:'worker-secret'};
+    const result=await loadDshProviderEnvironment(original,{home:temp});
+    assert.equal(result.source,'local-file');
+    assert.equal(result.env.DEEPSEEK_API_KEY,key);
+    assert.equal(original.DEEPSEEK_API_KEY,undefined);
+    const child=dshChildEnvironment(result.env);
+    assert.equal(child.DEEPSEEK_API_KEY,key);
+    assert.equal(child.DSGO_DSH_WORKER_TOKEN,undefined);
+  }finally{rmSync(temp,{recursive:true,force:true})}
+});
+
+test('explicit model key wins over ~/.deepseek.key without reading it',async()=>{
+  const result=await loadDshProviderEnvironment(
+    {DEEPSEEK_API_KEY:'explicit-key-that-is-not-a-real-key'},
+    {home:'nonexistent-private-dir',readFileImpl:async()=>{throw Error('should not read file')}}
+  );
+  assert.equal(result.source,'environment');
+  assert.equal(result.env.DEEPSEEK_API_KEY,'explicit-key-that-is-not-a-real-key');
+});
+
+test('missing or malformed private key is handled without exposing contents',async()=>{
+  const temp=mkdtempSync(join(tmpdir(),'opendo-dsh-bad-key-'));
+  try{
+    const missing=await loadDshProviderEnvironment({},{home:temp});
+    assert.equal(missing.source,'missing');
+    assert.equal(missing.env.DEEPSEEK_API_KEY,undefined);
+    writeFileSync(join(temp,'.deepseek.key'),'a b\nline two');
+    await assert.rejects(()=>loadDshProviderEnvironment({},{home:temp}),/one nonempty API key only/);
+    const named=join(temp,'custom-key-file');
+    writeFileSync(named,'long-single-token-that-is-not-a-secret');
+    const explicit=await loadDshProviderEnvironment({DSGO_DSH_KEY_FILE:named},{home:temp});
+    assert.equal(explicit.source,'local-file');
+    assert.equal(explicit.env.DEEPSEEK_API_KEY,'long-single-token-that-is-not-a-secret');
+  }finally{rmSync(temp,{recursive:true,force:true})}
+});
+
+test('DSH Worker token loads from gitignored local file without leaking into provider env',async()=>{
+  const temp=mkdtempSync(join(tmpdir(),'opendo-dsh-worker-secret-'));
+  try{
+    const workerId='worker_'+'a'.repeat(32);
+    const token=workerId+'.'+'b'.repeat(64);
+    const path=join(temp,'worker.json');
+    writeFileSync(path,JSON.stringify({worker_id:workerId,token}));
+    const r=await loadDshWorkerToken({}, {localPath:path});
+    assert.equal(r.token,token);
+    assert.equal(r.source,'local-file');
+    assert.equal(dshChildEnvironment({...process.env,DSGO_DSH_WORKER_TOKEN:r.token}).DSGO_DSH_WORKER_TOKEN,undefined);
+    const s=await loadDshWorkerToken({DSGO_DSH_WORKER_TOKEN:token},{localPath:'not-used'});
+    assert.equal(s.source,'environment');
+    assert.equal(s.token,token);
+  }finally{rmSync(temp,{recursive:true,force:true})}
+});
+
+test('DSH Worker local token rejects mismatched ID and secrets',async()=>{
+  const temp=mkdtempSync(join(tmpdir(),'opendo-dsh-worker-invalid-'));
+  try{
+    const path=join(temp,'bad.json');
+    writeFileSync(path,JSON.stringify({worker_id:'worker_'+'a'.repeat(32),token:'not-a-token'}));
+    await assert.rejects(()=>loadDshWorkerToken({}, {localPath:path}),/mismatch/);
+    await assert.rejects(()=>loadDshWorkerToken({DSGO_DSH_WORKER_TOKEN:'bad'}, {localPath:path}),/Invalid DSH Worker token/);
+  }finally{rmSync(temp,{recursive:true,force:true})}
 });
