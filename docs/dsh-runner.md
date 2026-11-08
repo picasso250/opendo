@@ -12,7 +12,7 @@ The installed DeepSeek Harness desktop application may ship a bundled CLI even i
 %LOCALAPPDATA%\Programs\DeepSeek Harness\DeepSeek Harness.exe
 ```
 
-It runs the packaged CLI with `ELECTRON_RUN_AS_NODE=1`, `--expose-internals`, and the app's own bundled `dsh-desktop-host/lib/cli.js`, using `spawn(shell:false)`. Verified locally on **DSH 0.2.2-rc.1**. The Runner calls `--profile headless --permission-mode workspace-write --approval-policy never -` (Task text through stdin). DSH upgrades may change syntax; verify `dsh --profile headless --help` for each installed version.
+It runs the packaged CLI with `ELECTRON_RUN_AS_NODE=1`, `--expose-internals`, and the app's own bundled `dsh-desktop-host/lib/cli.js`, using `spawn(shell:false)`. Verified locally on **DSH 0.2.2-rc.1**. The Runner calls `--profile headless --permission-mode danger-full-access --approval-policy never -` (Task text through stdin). DSH upgrades may change syntax; verify `dsh --profile headless --help` for each installed version.
 
 If the desktop app is installed elsewhere, set `DSGO_DSH_INSTALL_DIR` to its installation root. For a portable or other platform DSH, see `resolveDshLaunch` in `scripts/dsh-headless.mjs`.
 
@@ -38,9 +38,22 @@ This sends one harmless headless prompt in a disposable temporary folder. It del
 
 The Worker performs a similar **fail-closed preflight on startup**. If DSH cannot answer, the Runner exits without publishing a Worker catalog or claiming a live Task.
 
-### Permissions
+### Permissions — MVP YOLO default
 
-The adapter explicitly supplies `--permission-mode workspace-write --approval-policy never` in the DSH CLI, also sets `DSH_PERMISSION_MODE=workspace-write` and `DSH_TOOLS_MODE=native` in the child environment, and never passes Task text as command-line flags. **Do not assume these settings form a security boundary without confirming their meaning in your installed DSH release.** Start in a disposable trusted workspace with no private secrets. **Windows unattended execution is gated OFF by default:** official Windows file sandbox reports partial enforcement, and file reads/network are not restricted by file-effect modes. Only for a dedicated isolated OS account or VM, and after accepting those risks, set `DSGO_DSH_ACCEPT_PARTIAL_SANDBOX=YES_I_ACCEPT_HOST_READ_NETWORK_RISK` in the Runner shell. `runner:dsh:smoke` needs no such acknowledgment because it executes only a fixed harmless check. WorkBuddy/Codex/DSH sandbox semantics may differ; none are interchangeable.
+OpenDo's experimental DSH Runner launches with
+`--permission-mode danger-full-access --approval-policy never` and the matching
+`DSH_PERMISSION_MODE=danger-full-access`. No separate risk-confirmation variable,
+VM or Docker startup is needed. This changes only the local Runner, not the
+installed DSH Desktop app's global settings.
+
+YOLO gives the agent its host-user's file and network access with no approval
+prompt. The room owner accepts this tradeoff for rapid MVP development;
+model mistakes and prompt injections still pose a real risk. Worker Tokens and
+provider keys remain local and untracked by Git.
+
+To opt back into the constrained policy, set `DSGO_DSH_MODE=workspace-write`
+in PowerShell before launching the DSH Runner. Task deadlines, result logs,
+and model-key loading work identically in either mode.
 
 ## Register and run independently
 
@@ -85,4 +98,4 @@ The first real integration Task was a harmless read-only request; the isolated D
 
 DSH documents that `workspace-write` permits writes under the configured workspace **and platform temporary areas**. An initial test using two sibling directories under `%TEMP%` allowed both writes, so it did **not** establish a sandbox escape. A corrected test using two clean sibling directories under the repo's ignored `.dsh-runner-state/` directory created the workspace file but **did not** create the non-temp sibling file. This is a useful limited check, **not** a comprehensive audit.
 
-References: [file sandbox policy](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/fs/fs-sandbox/README.md), [Windows ACL sandbox](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/sandbox/sandbox-windows-acl/README.md), and [documented partial enforcement](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/subsystems/sandbox.md). Reads and network activity are not confined by these file-effect permissions. Because the Windows host also contains unrelated private work, the registered DSH Worker remains **paused** after the controlled integration test. Do not resume unattended operation without appropriate OS-level isolation.
+References: [file sandbox policy](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/fs/fs-sandbox/README.md), [Windows ACL sandbox](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/sandbox/sandbox-windows-acl/README.md), and [documented partial enforcement](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/subsystems/sandbox.md). Reads and network activity are not confined by these file-effect permissions. For the current MVP, the owner subsequently chose YOLO and accepted host-level access; historical workspace-write tests do not imply any boundary in YOLO mode.

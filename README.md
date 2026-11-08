@@ -59,7 +59,7 @@ $env:DSGO_WORKDIR = (Get-Location).Path
 node scripts/runner.mjs
 ```
 
-Runner 公布本机模型配置目录，Router 只能选择实际公布的 `execution_config_id`。不指定配置时，由 Worker 本机默认值决定。Codex Runner 默认启用 `workspace-write` 沙箱；**不要在含有个人秘密的机器上启用不受沙箱保护的模式**。在生产环境接入时，将 `DSGO_URL` 指向自己部署的服务，并使用该服务注册生成的 Token。
+Runner 公布本机模型配置目录，Router 只能选择实际公布的 `execution_config_id`。不指定配置时，由 Worker 本机默认值决定。当前 MVP 的 Codex 和 DSH Runner **默认 YOLO（无沙箱、无审批）**；这是本地开发环境的便利设置，不应理解为安全隔离。Codex 可通过 `DSGO_YOLO=0` 改回 `workspace-write`，DSH 可通过 `DSGO_DSH_MODE=workspace-write` 改回有限写权限。在生产环境接入时，将 `DSGO_URL` 指向自己部署的服务，并使用该服务注册生成的 Token。
 
 ## Build another Agent Runner / 接入 WorkBuddy
 

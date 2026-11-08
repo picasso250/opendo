@@ -26,14 +26,6 @@ if(!/^https:\/\//.test(url)&&!/^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/.t
   console.error('DSGO_DSH_URL must be HTTPS, or an isolated local localhost HTTP URL.');
   process.exit(2);
 }
-// Windows DSH exposes partial file-effect isolation, not a read/network sandbox.
-// Avoid automatically executing remote Router Tasks on the owner's ordinary host.
-if(process.platform==='win32' &&
-  env.DSGO_DSH_ACCEPT_PARTIAL_SANDBOX!=='YES_I_ACCEPT_HOST_READ_NETWORK_RISK'){
-  console.error('DSH unattended execution blocked on Windows: partial sandbox (unrestricted reads/network).');
-  console.error('Use a separate OS account/VM; only then explicitly set DSGO_DSH_ACCEPT_PARTIAL_SANDBOX=YES_I_ACCEPT_HOST_READ_NETWORK_RISK.');
-  process.exit(2);
-}
 let launch;
 try{launch=resolveDshLaunch(env)}catch(e){console.error(e.message);process.exit(2)}
 // Keep the key out of process.env: only the DSH child receives it.

@@ -134,20 +134,18 @@ using the same HTTP protocol, but `scripts/runner.mjs` **only executes Codex**;
 it cannot invoke WorkBuddy automatically. The Task contract is harness-agnostic,
 not an undocumented promise of WorkBuddy automation.
 
-By default the Runner uses `codex exec --sandbox workspace-write` with the
-local primary directory and optional `--add-dir` roots. These are **local
-configuration**, never taken from Router task instructions.
-
-For an **explicitly isolated/trusted machine only**, operators can opt into
-unsandboxed YOLO mode by setting **both**:
+OpenDo's **MVP default** for the Codex Runner is YOLO:
+`codex exec --dangerously-bypass-approvals-and-sandbox`. This is a local
+experiment choice, not a setting that remote Task instructions can change.
+To opt back into limited `workspace-write` mode:
 
 ```powershell
-$env:DSGO_YOLO = '1'
-$env:DSGO_CONFIRM_YOLO = 'YES_I_ACCEPT_HOST_RISK'
+$env:DSGO_YOLO = '0'
 ```
 
-YOLO bypasses sandbox and approval checks and is not recommended on a machine
-with personal secrets or untrusted projects. Neither Router nor Task can set it.
+YOLO executes commands with host-user permissions, no sandbox or approvals.
+Model errors or prompt injections may affect files, credentials and network.
+No separate `DSGO_CONFIRM_YOLO` variable is needed in MVP.
 The Runner stores local task text, agent final output and crash diagnostics
 under `.runner-state/` (Git-ignored) and polls once per minute.
 

@@ -32,6 +32,11 @@ export function resolveDshLaunch(env=process.env,platform=process.platform){
   return {command:env.DSGO_DSH_COMMAND||'dsh',prefix:[],electron:false};
 }
 
+// OpenDo MVP: the local DSH Runner defaults to full access. This is a
+// local host choice, never taken from Router Task instructions.
+export const dshPermissionMode=(env=process.env)=>
+  env.DSGO_DSH_MODE==='workspace-write'?'workspace-write':'danger-full-access';
+
 export function dshChildEnvironment(env=process.env,electron=true){
   // Least-privilege inheritance: only OS essentials, network proxy options,
   // DSH profile location and intentionally configured model-provider keys.
@@ -39,8 +44,8 @@ export function dshChildEnvironment(env=process.env,electron=true){
   // must never be passed into a remotely instructed local coding process.
   const allowed=/^(?:PATH|SystemRoot|WINDIR|COMSPEC|PATHEXT|HOME|USERPROFILE|HOMEDRIVE|HOMEPATH|APPDATA|LOCALAPPDATA|TEMP|TMP|TMPDIR|ProgramFiles|ProgramFiles\(x86\)|ProgramData|NUMBER_OF_PROCESSORS|PROCESSOR_ARCHITECTURE|LANG|LC_ALL|LC_CTYPE|NODE_EXTRA_CA_CERTS|HTTP_PROXY|HTTPS_PROXY|ALL_PROXY|NO_PROXY|DSH_HOME|DEEPSEEK_API_KEY|OPENAI_API_KEY|ANTHROPIC_API_KEY|OPENROUTER_API_KEY|ZAI_API_KEY|ZAI_CODING_CN_API_KEY)$/i;
   const clean=Object.fromEntries(Object.entries(env).filter(([key])=>allowed.test(key)));
-  // Defense in depth: headless 0.2.2+ also gets an explicit permission flag.
-  clean.DSH_PERMISSION_MODE='workspace-write';
+  // CLI and environment use the same locally selected execution preset.
+  clean.DSH_PERMISSION_MODE=dshPermissionMode(env);
   clean.DSH_TOOLS_MODE='native';
   if(electron)clean.ELECTRON_RUN_AS_NODE='1';
   return clean;
@@ -54,7 +59,7 @@ export async function executeDshHeadless(task,{cwd,launch=resolveDshLaunch(),
   if(!Number.isSafeInteger(task.deadline_at)||remaining<=0)throw Error('Task deadline already passed');
 
   const args=[...launch.prefix,'--profile','headless',
-    '--permission-mode','workspace-write','--approval-policy','never','-'];
+    '--permission-mode',dshPermissionMode(env),'--approval-policy','never','-'];
   const child=spawnImpl(launch.command,args,{cwd,env:dshChildEnvironment(env,launch.electron),
     windowsHide:true,shell:false,stdio:['pipe','pipe','pipe']});
   let stdout='',stderr='',overflow=false,deadlineHit=false;

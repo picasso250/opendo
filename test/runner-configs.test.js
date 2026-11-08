@@ -55,3 +55,11 @@ test('local and example catalogs have exactly Terra, Sol, Astra with High reason
   assert.equal(selectExecutionConfig({},parsed).id,'sol');
   assert.throws(()=>selectExecutionConfig({execution_config_id:'luna'},parsed));
 });
+
+test('OpenDo MVP Codex Runner defaults to YOLO with a local opt-out',async()=>{
+  const {readFileSync}=await import('node:fs');
+  const source=readFileSync(new URL('../scripts/runner.mjs',import.meta.url),'utf8');
+  assert.match(source,/const allowYolo=process\.env\.DSGO_YOLO!=='0'/);
+  assert.match(source,/--dangerously-bypass-approvals-and-sandbox/);
+  assert.doesNotMatch(source,/DSGO_CONFIRM_YOLO/);
+});

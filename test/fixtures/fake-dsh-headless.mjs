@@ -2,7 +2,7 @@
 let input='';
 process.stdin.setEncoding('utf8');
 for await(const part of process.stdin)input+=part;
-if(process.argv.slice(2).join(' ')!=='--profile headless --permission-mode workspace-write --approval-policy never -'){
+if(process.argv.slice(2).join(' ')!=='--profile headless --permission-mode danger-full-access --approval-policy never -'){
   process.stderr.write('unexpected argv');process.exit(19);
 }
 if(input==='FAIL'){

@@ -1,5 +1,4 @@
 import test from 'node:test';
-import {spawnSync} from 'node:child_process';
 import assert from 'node:assert/strict';
 import {mkdtempSync,mkdirSync,writeFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
@@ -40,7 +39,7 @@ test('Runner keeps credentials separate; child cannot inherit OpenDo bearer or a
   assert.equal(child.GH_TOKEN,undefined);
   assert.equal(child.CLOUDFLARE_API_TOKEN,undefined);
   assert.equal(child.DEEPSEEK_API_KEY,'test-provider-key');
-  assert.equal(child.DSH_PERMISSION_MODE,'workspace-write');
+  assert.equal(child.DSH_PERMISSION_MODE,'danger-full-access');
   assert.equal(child.Path,'C:\Windows');
 });
 
@@ -50,7 +49,7 @@ test('DSH stdout is returned byte-for-byte and Task is passed on stdin only',asy
     const r=await executeDshHeadless(task('hello world'),{cwd:temp,launch:fakeLaunch,
       env:{...process.env,DSGO_DSH_WORKER_TOKEN:'SENSITIVE',DSH_PERMISSION_MODE:'danger-full-access'}});
     assert.equal(r.status,'completed');
-    assert.equal(r.output,'OUT<hello world>\nNO_WORKER_TOKEN\nworkspace-write\n');
+    assert.equal(r.output,'OUT<hello world>\nNO_WORKER_TOKEN\ndanger-full-access\n');
     assert.equal(r.actual_model,null);
   }finally{rmSync(temp,{recursive:true,force:true})}
 });
@@ -99,7 +98,7 @@ test('OpenDo DSH integration does not depend on the Codex runner or change the W
   assert.match(source,/Refusing to register DSH Worker: preflight failed/);
   assert.match(source,/Invalid Task ID/);
   assert.match(helper,/shell:false/);
-  assert.match(helper,/--permission-mode','workspace-write'/);
+  assert.match(helper,/--permission-mode',dshPermissionMode\(env\)/);
   assert.match(helper,/--approval-policy','never'/);
 });
 
@@ -171,18 +170,9 @@ test('DSH Worker local token rejects mismatched ID and secrets',async()=>{
   }finally{rmSync(temp,{recursive:true,force:true})}
 });
 
-test('Windows Runner refuses unattended remote Task execution without explicit host-risk acknowledgment',()=>{
-  if(process.platform!=='win32')return;
-  const temp=mkdtempSync(join(tmpdir(),'opendo-dsh-risk-gate-'));
-  try{
-    const env={...process.env,DSGO_DSH_WORKER_TOKEN:'worker_'+'a'.repeat(32)+'.'+'b'.repeat(64),
-      DSGO_DSH_WORKDIR:temp,DSGO_DSH_URL:'https://chat.io99.xyz',
-      DSGO_DSH_ACCEPT_PARTIAL_SANDBOX:''};
-    const result=spawnSync(process.execPath,['scripts/dsh-runner.mjs'],{
-      cwd:fileURLToPath(new URL('..',import.meta.url)),env,encoding:'utf8',timeout:10000
-    });
-    assert.equal(result.status,2);
-    assert.match(result.stderr,/unattended execution blocked on Windows/);
-    assert.doesNotMatch(result.stderr,/worker_a{32}/);
-  }finally{rmSync(temp,{recursive:true,force:true})}
+test('Local DSH policy defaults to YOLO and supports workspace-write opt-out',async()=>{
+  const {dshPermissionMode}=await import('../scripts/dsh-headless.mjs');
+  assert.equal(dshPermissionMode({}),'danger-full-access');
+  assert.equal(dshPermissionMode({DSGO_DSH_MODE:'workspace-write'}),'workspace-write');
+  assert.equal(dshChildEnvironment({DSGO_DSH_MODE:'workspace-write'},false).DSH_PERMISSION_MODE,'workspace-write');
 });

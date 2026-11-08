@@ -30,17 +30,13 @@ const catalogJson=process.env.DSGO_EXECUTION_CONFIGS ||
   (fileSettings.configs===undefined?undefined:JSON.stringify(fileSettings.configs));
 const defaultConfigId=process.env.DSGO_DEFAULT_EXECUTION_CONFIG_ID || fileSettings.default_config_id;
 const localConfigs=loadExecutionConfigs(catalogJson,defaultConfigId);
-const allowYolo=process.env.DSGO_YOLO==='1' &&
-  process.env.DSGO_CONFIRM_YOLO==='YES_I_ACCEPT_HOST_RISK';
+// OpenDo MVP: unsandboxed Codex by default. DSGO_YOLO=0 opts back into workspace-write.
+const allowYolo=process.env.DSGO_YOLO!=='0';
 let addDirs=[];
 try{addDirs=JSON.parse(process.env.DSGO_ADD_DIRS||'[]')}catch{}
 if(!/^worker_[a-f0-9]{32}\.[a-f0-9]{64}$/.test(token) || !cwd ||
   !Array.isArray(addDirs)||addDirs.some(x=>typeof x!=='string'||!x.trim())){
   console.error('Configure DSGO_WORKER_TOKEN, DSGO_WORKDIR and optional DSGO_ADD_DIRS (JSON array).');
-  process.exit(2);
-}
-if(process.env.DSGO_YOLO==='1'&&!allowYolo){
-  console.error('YOLO requested without DSGO_CONFIRM_YOLO=YES_I_ACCEPT_HOST_RISK.');
   process.exit(2);
 }
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
